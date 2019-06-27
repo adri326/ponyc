@@ -116,29 +116,45 @@ task:
   only_if: $CIRRUS_PR != ''
 
   container:
-    image: ponylang/ponyc-ci-x86-64-unknown-linux-gnu-builder:20191105
+    image: ponylang/ponyc-ci-x86-64-unknown-linux-gnu-builder:20191106
     cpu: 8
     memory: 24
 
   name: "PR: x86-64-unknown-linux-gnu"
 
+  libs_cache:
+    folder: build/libs
+    fingerprint_script: echo "`md5sum lib/CMakeLists.txt` glibc"
+    populate_script: make libs build_flags=-j8 verbose=1
+
+  configure_script:
+    - make configure verbose=1
+  build_script:
+    - make build build_flags=-j8 verbose=1
   test_script:
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release -j8
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release test-ci
+    - make test-ci verbose=1
 
 task:
   only_if: $CIRRUS_PR != ''
 
   container:
-    image: ponylang/ponyc-ci-x86-64-unknown-linux-musl-builder:20191105
+    image: ponylang/ponyc-ci-x86-64-unknown-linux-musl-builder:20191106
     cpu: 8
     memory: 24
 
   name: "PR: x86-64-unknown-linux-musl"
 
+  libs_cache:
+    folder: build/libs
+    fingerprint_script: echo "`md5sum lib/CMakeLists.txt` musl"
+    populate_script: make libs build_flags=-j8 verbose=1
+
+  configure_script:
+    - make configure verbose=1
+  build_script:
+    - make build build_flags=-j8 verbose=1
   test_script:
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release link=static -j8
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release link=static test-ci
+    - make test-ci verbose=1
 
 task:
   only_if: $CIRRUS_PR != ''
@@ -155,9 +171,17 @@ task:
     - pkg update
     - pkg install -y cmake gmake libunwind git
 
+  libs_cache:
+    folder: build/libs
+    fingerprint_script: echo "`md5 lib/CMakeLists.txt` freebsd12"
+    populate_script: gmake libs build_flags=-j8 verbose=1
+
+  configure_script:
+    - gmake configure verbose=1
+  build_script:
+    - gmake build build_flags=-j8 verbose=1
   test_script:
-    - gmake -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release -j8
-    - gmake -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release test-ci
+    - gmake test-ci verbose=1
 
 task:
   only_if: $CIRRUS_PR != ''
@@ -170,6 +194,48 @@ task:
   install_script:
     - brew install coreutils
 
+  libs_cache:
+    folder: build/libs
+    fingerprint_script: echo "`md5 lib/CMakeLists.txt` macos"
+    populate_script: make libs build_flags=-j8 verbose=1
+
+  configure_script:
+    - make configure verbose=1
+  build_script:
+    - make build build_flags=-j8 verbose=1
   test_script:
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release -j8
-    - make -f Makefile-lib-llvm default_pic=true arch=x86-64 config=release test-ci
+    - make test-ci verbose=1
+
+  only_if: $CIRRUS_BRANCH != 'master' && $CIRRUS_BRANCH != 'release' && $CIRRUS_API_CREATED != "true"
+
+task:
+  only_if: $CIRRUS_PR != ''
+
+  windows_container:
+    dockerfile: .ci-dockerfiles/windowsservercore/Dockerfile
+    os_version: 2019
+    cpu: 8
+    memory: 24
+
+  name: "PR: x86-64-pc-windows-msvc"
+
+  timeout_in: 120m
+
+  libs_cache:
+    folder: build/libs
+    fingerprint_script: powershell.exe -NoLogo -Command "(Get-FileHash -Path lib\CMakeLists.txt).Hash"
+    populate_script: powershell.exe -NoLogo -File .\make.ps1 libs -Generator "Visual Studio 16 2019"
+
+  config_script:
+    - powershell.exe -NoLogo -File .\make.ps1 configure -Config Release -Generator "Visual Studio 16 2019" -InstallPath "build\install\release"
+  build_script:
+    - powershell.exe -NoLogo -File .\make.ps1 build -Config Release -Generator "Visual Studio 16 2019" -InstallPath "build\install\release"
+  test_script:
+    - powershell.exe -NoLogo -File .\make.ps1 test -Config Release -Generator "Visual Studio 16 2019" -InstallPath "build\install\release"
+
+    # install_script: powershell.exe -NoLogo -File .\make.ps1 install -Config Release -InstallPath "build\install\release"
+  # package_script: powershell.exe -NoLogo -File .\make.ps1 package -Config Release -InstallPath "build\install\release" -Version date
+  # upload_script: powershell.exe -NoLogo -Command "$version = (Get-Date).ToString(""""yyyyMMdd""""); & cloudsmith push raw --version $version --api-key 1cc732891a064c6542e3632a6ee281b69dbdce18 --summary """"Pony compiler"""" --description """"https://github.com/ponylang/ponyc"""" main-pony/pony-nightlies build\ponyc-x86_64-pc-windows-msvc-$version.zip
+
+  binary_artifacts:
+    path: build/*.zip
