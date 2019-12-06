@@ -1,5 +1,6 @@
 use "signals"
 use @pony_os_errno[I32]()
+use @pony_os_clear_errno[None]()
 
 primitive _STDINFILENO
   fun apply(): U32 => 0
@@ -34,13 +35,45 @@ primitive _EAGAIN
 primitive _EINVAL
   fun apply(): I32 => 22
 
+primitive WNOHANG
+  fun apply(): I32 =>
+    ifdef posix then
+      @ponyint_wnohang[I32]()
+    else
+      compile_error "no clue what WNOHANG is on this platform."
+    end
+
+class val _ExitCode
+  let code: I32
+
+  new val create(code': I32) =>
+    code = code'
+
+class val _WaitPidError
+  let error_code: I32
+
+  new val create(code: I32) =>
+    error_code = code
+
+  new val unknown_error() =>
+    error_code = -1
+
+primitive _StillRunning
+type _WaitResult is (_ExitCode | _WaitPidError | _StillRunning)
+
+
 interface _Process
   fun kill()
-  fun ref wait(): I32
+  fun ref wait(): _WaitResult
+    """
+    Only polls, does not actually wait for the process to finish,
+    in order to not block a scheduler thread.
+    """
+
 
 class _ProcessNone is _Process
   fun kill() => None
-  fun ref wait(): I32 => 0
+  fun ref wait(): _WaitResult => _ExitCode(0)
 
 class _ProcessPosix is _Process
   let pid: I32
@@ -132,18 +165,25 @@ class _ProcessPosix is _Process
       end
     end
 
-  fun ref wait(): I32 =>
+  fun ref wait(): _WaitResult =>
+    """Only polls, does not block."""
     if pid > 0 then
       var wstatus: I32 = 0
-      let options: I32 = 0
-      if @waitpid[I32](pid, addressof wstatus, options) < 0 then
-        -1
+      let options: I32 = 0 or WNOHANG()
+      // poll, do not block
+      match @waitpid[I32](pid, addressof wstatus, options)
+      | let err: I32 if err < 0 =>
+        let wpe = _WaitPidError(@pony_os_errno())
+        @pony_os_clear_errno()
+        wpe
+      | let exited_pid: I32 if exited_pid == pid => // our process finished
+        _ExitCode((wstatus >> 8) and 0xff)
+      | 0 => _StillRunning
       else
-        // Extract the process exit code.
-        (wstatus >> 8) and 0xff
+        _WaitPidError.unknown_error()
       end
     else
-      -1
+      _WaitPidError.unknown_error()
     end
 
 class _ProcessWindows is _Process
@@ -193,9 +233,17 @@ class _ProcessWindows is _Process
       @ponyint_win_process_kill[I32](hProcess)
     end
 
-  fun ref wait(): I32 =>
+  fun ref wait(): _WaitResult =>
     if hProcess != 0 then
-      @ponyint_win_process_wait[I32](hProcess)
+      var exit_code: I32 = 0
+      match @ponyint_win_process_wait[I32](hProcess, addressof exit_code)
+      | 0 => _ExitCode(exit_code)
+      | 1 => _StillRunning
+      | let code: I32 =>
+        @printf[None]("_ProcessWindows wait returned: ".cstring(), code.string().cstring())
+        _WaitPidError(code)
+      end
     else
-      -1
+      _WaitPidError.unknown_error()
     end
+
