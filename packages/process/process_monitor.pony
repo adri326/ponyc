@@ -62,26 +62,41 @@ class ProcessClient is ProcessNotify
     | ForkError => _env.out.print("ProcessError: ForkError")
     | WaitpidError => _env.out.print("ProcessError: WaitpidError")
     | WriteError => _env.out.print("ProcessError: WriteError")
-    | KillError => _env.out.print("ProcessError: KillError")
     | CapError => _env.out.print("ProcessError: CapError")
-    | Unsupported => _env.out.print("ProcessError: Unsupported")
     else _env.out.print("Unknown ProcessError!")
     end
 
-  fun ref dispose(process: ProcessMonitor ref, child_exit_code: I32) =>
+  fun ref dispose(process: ProcessMonitor ref, child_exit_status: ProcessExitStatus) =>
     let code: I32 = consume child_exit_code
-    _env.out.print("Child exit code: " + code.string())
+    match child_exit_status
+    | let exited: Exited =>
+      _env.out.print("Child exit code: " + exited.exit_code().string())
+    | let signaled: Signaled =>
+      _env.out.print("Child terminated by signal: " + signaled.signal().string())
+    end
 ```
 
 ## Process portability
 
-The ProcessMonitor supports spawning processes on Linux, FreeBSD and OSX.
-Processes are not supported on Windows and attempting to use them will cause
-a runtime error.
+The ProcessMonitor supports spawning processes on Linux, FreeBSD, OSX and Windows.
 
 ## Shutting down ProcessMonitor and external process
 
-Document waitpid behaviour (stops world)
+When a process is spawned using ProcessMonitor, and it is not necessart to communicating with it any further
+using `stdin` and `stdout` or `stderr`, calling [done_writing()](process-ProcessMonitor.md#done_writing)
+will close stdin to the child process. Processes expecting input will be notified of an `EOF` on their `stdin`
+and will terminate.
+
+If a running program needs to be canceled and the [ProcessMonitor](process-ProcessMonitor.md) should be shut down,
+calling [dispose](process-ProcessMonitor.md#dispose) will terminate the child
+process and clean up all resources.
+
+Once the child process is detected to be closed, the process exit status is retrieved and
+[ProcessNotify.dispose](process-ProcessNotify.md#dispose) is called.
+
+This can be either an instance of [Exited](process-Exited.md) containing
+the process exit code in case the program exited on its own,
+or (only on posix systems like linux, osx or bsd) an instance of [Signaled](process-Signaled.md) containing the signal number that terminated the process.
 
 """
 use "backpressure"
@@ -94,16 +109,12 @@ primitive PipeError
 primitive ForkError
 primitive WaitpidError
 primitive WriteError
-primitive KillError   // Not thrown at this time
-primitive Unsupported // we throw this on non POSIX systems
 primitive CapError
 
 type ProcessError is
   ( ExecveError
   | ForkError
-  | KillError
   | PipeError
-  | Unsupported
   | WaitpidError
   | WriteError
   | CapError
@@ -329,12 +340,11 @@ actor ProcessMonitor
       // TODO: make polling interval configurable
       let timer = Timer(consume tn, 100_000_000, 100_000_000)
       timers(consume timer)
-    | let ec: _ExitCode =>
-      // process child exit code
-      _notifier.dispose(this, ec.code)
+    | let exit_status: ProcessExitStatus =>
+      // process child exit code or termination signal
+      _notifier.dispose(this, exit_status)
       _dispose_timers()
     | let wpe: _WaitPidError =>
-      @printf[None]("wait errored with code: ".cstring(), wpe.error_code.string().cstring())
       _notifier.failed(this, WaitpidError)
       _dispose_timers()
     end
