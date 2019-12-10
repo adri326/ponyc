@@ -12,7 +12,7 @@ PONY_API uint32_t ponyint_win_pipe_create(uint32_t* near_fd, uint32_t* far_fd, b
 PONY_API size_t ponyint_win_process_create(char* appname, char* cmdline,
     char* environ, uint32_t stdin_fd, uint32_t stdout_fd, uint32_t stderr_fd);
 
-PONY_API int32_t ponyint_win_process_wait(size_t hProcess);
+PONY_API int32_t ponyint_win_process_wait(size_t hProcess, int32_t* exit_code_ptr);
 
 PONY_API int32_t ponyint_win_process_kill(size_t hProcess);
 
