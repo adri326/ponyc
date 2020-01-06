@@ -40,7 +40,7 @@ if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
 	Push-Location
 	$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 	if (Test-Path $vswhere -PathType Leaf ) {
-    	$cmakePath = $(get-item $( Invoke-Expression '& "$vswhere" -latest -requires Microsoft.VisualStudio.Component.VC.CMake.Project -find Common7/IDE/**/cmake.exe ' )).Directory.FullName
+    	$cmakePath = $(Get-Item $( Invoke-Expression '& "$vswhere" -latest -requires Microsoft.VisualStudio.Component.VC.CMake.Project -find Common7/IDE/**/cmake.exe ' )).Directory.FullName
 	    if ($null -ne $cmakePath) {
 			$env:Path = "$env:Path;$cmakePath"
 			Write-Output "Success, CMake added to current PATH from $cmakePath"
@@ -52,7 +52,6 @@ if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
 	}
 	Pop-Location
 }
-
 
 if ($Generator -eq "default")
 {
@@ -70,6 +69,18 @@ else
     $buildDir = Join-Path -Path $srcDir -ChildPath "build\build_$config_lower"
 }
 
+$tempPath = [IO.Path]::GetFullPath($env:TEMP)
+$buildPath = [IO.Path]::GetFullPath((Join-Path -Path $srcDir -ChildPath "build"))
+if ($buildPath.StartsWith($tempPath, [StringComparison]::OrdinalIgnoreCase))
+{
+    $newTempPath = Join-Path -Path $srcDir -ChildPath "tempdir"
+    if (!(Test-Path $newTempPath -PathType Leaf))
+    {
+        New-Item $newTempPath -ItemType Directory
+    }
+    $env:TEMP = $newTempPath
+}
+
 $libsDir = Join-Path -Path $srcDir -ChildPath "build\libs"
 $outDir = Join-Path -Path $srcDir -ChildPath "build\$config_lower"
 
@@ -77,6 +88,7 @@ Write-Output "Source directory: $srcDir"
 Write-Output "Build directory:  $buildDir"
 Write-Output "Libs directory:   $libsDir"
 Write-Output "Output directory: $outDir"
+Write-Output "Temp directory:   $env:TEMP"
 
 if ($InstallPath -eq "default")
 {
