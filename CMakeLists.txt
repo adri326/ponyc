@@ -57,6 +57,8 @@ add_compile_definitions(
 )
 
 if (MSVC)
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
     # Disable some warnings for Windows, and compile Debug builds with the regular CRT.
     add_compile_options(
         /wd4142
