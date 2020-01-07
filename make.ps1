@@ -78,6 +78,7 @@ if ($buildPath.StartsWith($tempPath, [StringComparison]::OrdinalIgnoreCase))
     {
         New-Item $newTempPath -ItemType Directory
     }
+    $env:TMP = $newTempPath
     $env:TEMP = $newTempPath
 }
 
