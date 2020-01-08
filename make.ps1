@@ -69,6 +69,7 @@ else
     $buildDir = Join-Path -Path $srcDir -ChildPath "build\build_$config_lower"
 }
 
+# Cirrus builds inside the temp directory, which MSVC doesn't like.
 $tempPath = [IO.Path]::GetFullPath($env:TEMP)
 $buildPath = [IO.Path]::GetFullPath((Join-Path -Path $srcDir -ChildPath "build"))
 if ($buildPath.StartsWith($tempPath, [StringComparison]::OrdinalIgnoreCase))
@@ -134,22 +135,21 @@ switch ($Command.ToLower())
         {
             Write-Output "cmake.exe -B `"$libsBuildDir`" -S `"$libsSrcDir`" -G `"$Generator`" -A $Architecture -Thost=x64 -DCMAKE_INSTALL_PREFIX=`"$libsDir`" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_WARNINGS=OFF -DLLVM_ENABLE_TERMINFO=OFF"
             & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -A $Architecture -Thost=x64 -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_WARNINGS=OFF -DLLVM_ENABLE_TERMINFO=OFF
+            $err = $LastExitCode
         }
         else
         {
             Write-Output "cmake.exe -B `"$libsBuildDir`" -S `"$libsSrcDir`" -G `"$Generator`" -Thost=x64 -DCMAKE_INSTALL_PREFIX=`"$libsDir`" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_WARNINGS=OFF -DLLVM_ENABLE_TERMINFO=OFF"
             & cmake.exe -B "$libsBuildDir" -S "$libsSrcDir" -G "$Generator" -Thost=x64 -DCMAKE_INSTALL_PREFIX="$libsDir" -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_WARNINGS=OFF -DLLVM_ENABLE_TERMINFO=OFF
+            $err = $LastExitCode
         }
-        if (!$?) { throw "Error: exit code $LastExitCode" }
+        if ($err -ne 0) { throw "Error: exit code $err" }
 
-        Write-Output "Building libraries..."
-        Write-Output "cmake.exe --build `"$libsBuildDir`" --config Release"
-        & cmake.exe --build "$libsBuildDir" --config Release
-
-        Write-Output "Installing libraries..."
+        # Write-Output "Building libraries..."
         Write-Output "cmake.exe --build `"$libsBuildDir`" --target install --config Release"
         & cmake.exe --build "$libsBuildDir" --target install --config Release
-        if (!$?) { throw "Error: exit code $LastExitCode" }
+        $err = $LastExitCode
+        if ($err -ne 0) { throw "Error: exit code $err" }
         break
     }
     "cleanlibs"
@@ -173,14 +173,16 @@ switch ($Command.ToLower())
             Write-Output "cmake.exe -B `"$buildDir`" -S `"$srcDir`" -G `"$Generator`" -Thost=x64 -DCMAKE_INSTALL_PREFIX="$InstallPath" -DCMAKE_BUILD_TYPE=`"$Config`""
             & cmake.exe -B "$buildDir" -S "$srcDir" -G "$Generator" -Thost=x64 -DCMAKE_INSTALL_PREFIX="$InstallPath" -DCMAKE_BUILD_TYPE="$Config" --no-warn-unused-cli
         }
-        if (!$?) { throw "Error: exit code $LastExitCode" }
+        $err = $LastExitCode
+        if ($err -ne 0) { throw "Error: exit code $err" }
         break
     }
     "build"
     {
         Write-Output "cmake.exe --build `"$buildDir`" --config $Config --target ALL_BUILD"
         & cmake.exe --build "$buildDir" --config $Config --target ALL_BUILD
-        if (!$?) { throw "Error: exit code $LastExitCode" }
+        $err = $LastExitCode
+        if ($err -ne 0) { throw "Error: exit code $err" }
         break
     }
     "clean"
@@ -215,13 +217,15 @@ switch ($Command.ToLower())
         $numTestSuitesRun += 1;
         Write-Output "$outDir\libponyrt.tests.exe --gtest_shuffle"
         & $outDir\libponyrt.tests.exe --gtest_shuffle
-        if (!$?) { $failedTestSuites += 'libponyrt.tests' }
+        $err = $LastExitCode
+        if ($err -ne 0) { $failedTestSuites += 'libponyrt.tests' }
 
         # libponyc.tests
         $numTestSuitesRun += 1;
         Write-Output "$outDir\libponyc.tests.exe --gtest_shuffle"
         & $outDir\libponyc.tests.exe --gtest_shuffle
-        if (!$?) { $failedTestSuites += 'libponyc.tests' }
+        $err = $LastExitCode
+        if ($err -ne 0) { $failedTestSuites += 'libponyc.tests' }
 
         # stdlib-debug
         $numTestSuitesRun += 1;
@@ -231,7 +235,8 @@ switch ($Command.ToLower())
         {
             Write-Output "$outDir\stdlib-debug.exe"
             & $outDir\stdlib-debug.exe --exclude="net/Broadcast"
-            if (!$?) { $failedTestSuites += 'stdlib-debug' }
+            $err = $LastExitCode
+            if ($err -ne 0) { $failedTestSuites += 'stdlib-debug' }
         }
         else
         {
@@ -246,7 +251,8 @@ switch ($Command.ToLower())
         {
             Write-Output "$outDir\stdlib-release.exe"
             & $outDir\stdlib-release.exe --exclude="net/Broadcast"
-            if (!$?) { $failedTestSuites += 'stdlib-release' }
+            $err = $LastExitCode
+            if ($err -ne 0) { $failedTestSuites += 'stdlib-release' }
         }
         else
         {
@@ -291,7 +297,8 @@ switch ($Command.ToLower())
     {
         Write-Output "cmake.exe --build `"$buildDir`" --config $Config --target install"
         & cmake.exe --build "$buildDir" --config $Config --target install
-        if (!$?) { throw "Error: exit code $LastExitCode" }
+        $err = $LastExitCode
+        if ($err -ne 0) { throw "Error: exit code $err" }
 
         break
     }

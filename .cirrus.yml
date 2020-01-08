@@ -233,8 +233,8 @@ task:
     - powershell.exe -NoLogo -File .\make.ps1 test -Config Release -Generator "Visual Studio 16 2019" -InstallPath "build\install\release"
 
     # install_script: powershell.exe -NoLogo -File .\make.ps1 install -Config Release -InstallPath "build\install\release"
-  # package_script: powershell.exe -NoLogo -File .\make.ps1 package -Config Release -InstallPath "build\install\release" -Version date
-  # upload_script: powershell.exe -NoLogo -Command "$version = (Get-Date).ToString(""""yyyyMMdd""""); & cloudsmith push raw --version $version --api-key 1cc732891a064c6542e3632a6ee281b69dbdce18 --summary """"Pony compiler"""" --description """"https://github.com/ponylang/ponyc"""" main-pony/pony-nightlies build\ponyc-x86_64-pc-windows-msvc-$version.zip
+    # package_script: powershell.exe -NoLogo -File .\make.ps1 package -Config Release -InstallPath "build\install\release" -Version date
+    # upload_script: powershell.exe -NoLogo -Command "$version = (Get-Date).ToString(""""yyyyMMdd""""); & cloudsmith push raw --version $version --api-key 1cc732891a064c6542e3632a6ee281b69dbdce18 --summary """"Pony compiler"""" --description """"https://github.com/ponylang/ponyc"""" main-pony/pony-nightlies build\ponyc-x86_64-pc-windows-msvc-$version.zip
 
   binary_artifacts:
     path: build/*.zip
