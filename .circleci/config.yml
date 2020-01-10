@@ -27,8 +27,7 @@ jobs:
       - run: make build config=release verbose=1 build_flags=-j3
       - run: make test-ci config=release verbose=1
       # build libponyrt for target arch
-      - run: make cross-configure config=release CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ arch=armv7-a tune=cortex-a9
-      - run: make cross-libponyrt config=release
+      - run: make cross-libponyrt config=release CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ arch=armv7-a tune=cortex-a9
       # - run: make config=release verbose=1 CC=arm-linux-gnueabi-gcc CXX=arm-linux-gnueabi-g++ arch=armv7-a tune=cortex-a9 bits=32 CFLAGS="-idirafter /usr/cross/include/" CXXFLAGS="-idirafter /usr/cross/include/" LDFLAGS="-idirafter /usr/cross/include/" PONYPATH=/usr/cross/lib -j3 libponyrt
       # # build ponyc for target cross compilation
       # - run: make config=release verbose=1 PONYPATH=/usr/cross/lib cross_triple=arm-unknown-linux-gnueabi cross_arch=armv7-a cross_cpu=cortex-a9 cross_linker=arm-linux-gnueabi-gcc QEMU_RUNNER="qemu-arm-static --cpu cortex-a9 -L /usr/local/arm-linux-gnueabi/libc" -j3 all
