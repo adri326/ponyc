@@ -1,9 +1,31 @@
 config ?= release
 arch ?= native
+tune ?= generic
 version ?= $(shell cat VERSION)
 build_flags ?= -j2
 llvm_archs ?= X86
 llvm_config ?= Release
+
+# By default, CC is cc and CXX is g++
+# So if you use standard alternatives on many Linuxes
+# You can get clang and g++ and then bad things will happen
+ifneq (,$(shell $(CC) --version 2>&1 | grep clang))
+  ifneq (,$(shell $(CXX) --version 2>&1 | grep "Free Software Foundation"))
+    CXX = c++
+  endif
+
+  ifneq (,$(shell $(CXX) --version 2>&1 | grep "Free Software Foundation"))
+    $(error CC is clang but CXX is g++. They must be from matching compilers.)
+  endif
+else ifneq (,$(shell $(CC) --version 2>&1 | grep "Free Software Foundation"))
+  ifneq (,$(shell $(CXX) --version 2>&1 | grep clang))
+    CXX = c++
+  endif
+
+  ifneq (,$(shell $(CXX) --version 2>&1 | grep clang))
+    $(error CC is gcc but CXX is clang++. They must be from matching compilers.)
+  endif
+endif
 
 srcDir := $(shell dirname '$(subst /Volumes/Macintosh HD/,/,$(realpath $(lastword $(MAKEFILE_LIST))))')
 buildDir := $(srcDir)/build/build_$(config)
@@ -20,7 +42,7 @@ else
 endif
 
 .DEFAULT_GOAL := build
-.PHONY: all libs cleanlibs configure build test test-ci test-check-version test-core test-stdlib-debug test-stdlib-release test-examples test-validate-grammar clean
+.PHONY: all libs cleanlibs configure cross-configure build test test-ci test-check-version test-core test-stdlib-debug test-stdlib-release test-examples test-validate-grammar clean
 
 libs:
 	$(SILENT)mkdir -p '$(libsBuildDir)'
@@ -33,12 +55,21 @@ cleanlibs:
 
 configure:
 	$(SILENT)mkdir -p '$(buildDir)'
-	$(SILENT)cd '$(buildDir)' && cmake -B '$(buildDir)' -S '$(srcDir)' -DCMAKE_BUILD_TYPE=$(config) -DCMAKE_C_FLAGS="-march=$(arch)" -DCMAKE_CXX_FLAGS="-march=$(arch)" -DPONYC_VERSION=$(version)
+	$(SILENT)cd '$(buildDir)' && CC="$(CC)" CXX="$(CXX)" cmake -B '$(buildDir)' -S '$(srcDir)' -DCMAKE_BUILD_TYPE=$(config) -DCMAKE_C_FLAGS="-march=$(arch) -mtune=$(tune)" -DCMAKE_CXX_FLAGS="-march=$(arch) -mtune=$(tune)" -DPONYC_VERSION=$(version)
 
 all: build
 
 build:
 	$(SILENT)cd '$(buildDir)' && cmake --build '$(buildDir)' --config $(config) --target all -- $(build_flags)
+
+crossBuildDir := $(srcDir)/build/$(arch)/build_$(config)
+
+cross-configure:
+	$(SILENT)mkdir -p $(crossBuildDir)
+	$(SILENT)cd '$(crossBuildDir)' && CC="$(CC)" CXX="$(CXX)" cmake -B '$(crossBuildDir)' -S '$(srcDir)' -DCMAKE_BUILD_TYPE=$(config) -DCMAKE_C_FLAGS="-march=$(arch) -mtune=$(tune)" -DCMAKE_CXX_FLAGS="-march=$(arch) -mtune=$(tune)" -DPONYC_VERSION=$(version)
+
+cross-libponyrt:
+	$(SILENT)cd '$(crossBuildDir)' && cmake --build '$(crossBuildDir)' --config $(config) --target libponyrt -- $(build_flags)
 
 test: all test-core test-stdlib-release test-examples
 
