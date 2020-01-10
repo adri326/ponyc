@@ -18,9 +18,11 @@ project(Pony VERSION ${PONYC_VERSION} LANGUAGES C CXX)
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # We require LLVM, Google Test and Google Benchmark
-find_package(LLVM REQUIRED CONFIG PATHS "build/libs/lib/cmake/llvm" "build/libs/lib64/cmake/llvm" NO_DEFAULT_PATH)
-find_package(GTest REQUIRED CONFIG PATHS "build/libs/lib/cmake/GTest" "build/libs/lib64/cmake/GTest" NO_DEFAULT_PATH)
-find_package(benchmark REQUIRED CONFIG PATHS "build/libs/lib/cmake/benchmark" "build/libs/lib64/cmake/benchmark" NO_DEFAULT_PATH)
+if (NOT PONY_CROSS_LIBPONYRT)
+    find_package(LLVM REQUIRED CONFIG PATHS "build/libs/lib/cmake/llvm" "build/libs/lib64/cmake/llvm" NO_DEFAULT_PATH)
+    find_package(GTest REQUIRED CONFIG PATHS "build/libs/lib/cmake/GTest" "build/libs/lib64/cmake/GTest" NO_DEFAULT_PATH)
+    find_package(benchmark REQUIRED CONFIG PATHS "build/libs/lib/cmake/benchmark" "build/libs/lib64/cmake/benchmark" NO_DEFAULT_PATH)
+endif()
 
 # LibPonyC tests assume that our outputs are two directories above the root directory.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/../debug)
@@ -79,23 +81,28 @@ endif (MSVC)
 
 set(CMAKE_STATIC_LIBRARY_PREFIX "")
 
-add_subdirectory(src/libponyc)
-add_subdirectory(src/libponyrt)
-add_subdirectory(src/ponyc)
+if (PONY_CROSS_LIBPONYRT)
+    add_subdirectory(src/libponyrt)
+    install(TARGETS libponyrt)
+else()
+    add_subdirectory(src/libponyc)
+    add_subdirectory(src/libponyrt)
+    add_subdirectory(src/ponyc)
 
-add_subdirectory(test/libponyc)
-add_subdirectory(test/libponyrt)
+    add_subdirectory(test/libponyc)
+    add_subdirectory(test/libponyrt)
 
-add_subdirectory(benchmark/libponyc)
-add_subdirectory(benchmark/libponyrt)
+    add_subdirectory(benchmark/libponyc)
+    add_subdirectory(benchmark/libponyrt)
 
-install(TARGETS
-    ponyc
-    libponyc.tests
-    libponyc.benchmarks
-    libponyrt
-    libponyrt.benchmarks
-    libponyrt.tests
-    DESTINATION ponyc/bin)
-install(DIRECTORY packages/ DESTINATION packages)
-install(DIRECTORY examples/ DESTINATION examples PATTERN .gitignore EXCLUDE)
+    install(TARGETS
+        ponyc
+        libponyc.tests
+        libponyc.benchmarks
+        libponyrt
+        libponyrt.benchmarks
+        libponyrt.tests
+        DESTINATION ponyc/bin)
+    install(DIRECTORY packages/ DESTINATION packages)
+    install(DIRECTORY examples/ DESTINATION examples PATTERN .gitignore EXCLUDE)
+endif()
