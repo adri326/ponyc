@@ -49,8 +49,13 @@ add_library(libponyrt STATIC
     ${_ll_obj}
 )
 
+find_file(_llc_command
+    NAMES llc.exe llc
+    PATHS "${CMAKE_BINARY_DIR}/../libs/bin"
+)
+
 add_custom_command(
-    COMMAND "../../../libs/bin/llc" -relocation-model=pic -filetype=obj -o ${_ll_obj} ${_ll_src}
+    COMMAND "${_llc_command}" ${LL_FLAGS} -relocation-model=pic -filetype=obj -o ${_ll_obj} ${_ll_src}
     WORKING_DIRECTORY ${libponyrt_BINARY_DIR}
     DEPENDS ${_ll_src}
     OUTPUT ${_ll_obj}

@@ -66,7 +66,7 @@ crossBuildDir := $(srcDir)/build/$(arch)/build_$(config)
 
 cross-libponyrt:
 	$(SILENT)mkdir -p $(crossBuildDir)
-	$(SILENT)cd '$(crossBuildDir)' && CC="$(CC)" CXX="$(CXX)" cmake -B '$(crossBuildDir)' -S '$(srcDir)' -DPONY_CROSS_LIBPONYRT=true -DCMAKE_BUILD_TYPE=$(config) -DCMAKE_C_FLAGS="-march=$(arch) -mtune=$(tune)" -DCMAKE_CXX_FLAGS="-march=$(arch) -mtune=$(tune)" -DPONYC_VERSION=$(version)
+	$(SILENT)cd '$(crossBuildDir)' && CC="$(CC)" CXX="$(CXX)" cmake -B '$(crossBuildDir)' -S '$(srcDir)' -DPONY_CROSS_LIBPONYRT=true -DCMAKE_BUILD_TYPE=$(config) -DCMAKE_C_FLAGS="-march=$(arch) -mtune=$(tune)" -DCMAKE_CXX_FLAGS="-march=$(arch) -mtune=$(tune)" -DPONYC_VERSION=$(version) -DLL_FLAGS="-mcpu=$(arch)"
 	$(SILENT)cd '$(crossBuildDir)' && cmake --build '$(crossBuildDir)' --config $(config) --target all -- $(build_flags)
 
 test: all test-core test-stdlib-release test-examples
