@@ -51,7 +51,7 @@ add_library(libponyrt STATIC
 
 find_file(_llc_command
     NAMES llc.exe llc
-    PATHS "${CMAKE_BINARY_DIR}/../libs/bin"
+    PATHS "${CMAKE_BINARY_DIR}/../../libs/bin" "${CMAKE_BINARY_DIR}/../libs/bin"
 )
 
 add_custom_command(
